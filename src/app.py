@@ -23,11 +23,13 @@ if db_url is not None:
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////tmp/test.db"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JWT_SECRET_KEY'] = "llavedecrv"
 
 MIGRATE = Migrate(app, db)
 db.init_app(app)
 CORS(app)
-setup_admin(app)
+# setup_admin(app)
+jwt = JWTManager(app)
 
 # Handle/serialize errors like a JSON object
 @app.errorhandler(APIException)
