@@ -10,6 +10,7 @@ from utils import APIException, generate_sitemap
 from admin import setup_admin
 from sqlalchemy import select
 from models import db, User, Planets, People, Favoritos
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 #from models import Person
 
 
@@ -37,6 +38,24 @@ def handle_invalid_usage(error):
 @app.route('/')
 def sitemap():
     return generate_sitemap(app)
+
+# Login y Token JWT
+@app.route('/login', methods=['POST'])
+def login():
+    try:
+        email = request.json.get("email", None)
+        password = request.json.get("password", None)
+        user = db.session.execute(db.select(User).filter_by(email=email)).scalar_one()
+
+        if email == user.email or password == user.password:
+            access_token = create_access_token(identity=email)
+            return jsonify(access_token=access_token), 200
+        
+    except:
+        return jsonify({"msg": "Bad email or password"}), 401
+    
+    
+    
 
 #LISTAR USUARIOS
 @app.route('/user', methods=['GET'])
@@ -140,20 +159,18 @@ def one_planet(id):
 
 #listar favoritos
 @app.route('/users/favorites', methods=['GET'])
-def handle_favoritos():
-    data = db.session.scalars(select(Favoritos)).all()
-    results = list(map(lambda item: item.serialize(), data))
-    if results == []:
-        results = "no favoritos"
-    response_body = {
-        "results": results
-    }
-    return jsonify(response_body), 200
+@jwt_required()
+def get_favorites():
+    user_id = get_jwt_identity()
+    favorites = db.session.scalars(select(Favoritos).where(Favoritos.usuario_id == user_id)).all()
+    return jsonify([fav.serialize() for fav in favorites]), 200
+
 
 ##### POST ENDPOINT
 @app.route('/favorite/planet/<int:planet_id>', methods=['POST'])
+@jwt_required()
 def add_favorite_planet(planet_id):
-    user_id = 2  
+    user_id = get_jwt_identity()
     planet = db.session.get(Planets, planet_id)
     if not planet:
         return jsonify({"msg": "Planet not found"}), 404
@@ -164,8 +181,9 @@ def add_favorite_planet(planet_id):
     return jsonify(favorito.serialize()), 201
 
 @app.route('/favorite/people/<int:people_id>', methods=['POST'])
+@jwt_required()
 def add_favorite_people(people_id):
-    user_id = 2
+    user_id = get_jwt_identity()
     people = db.session.get(People, people_id)
     if not people:
         return jsonify({"msg": "Character not found"}), 404
@@ -177,8 +195,9 @@ def add_favorite_people(people_id):
 
 # ##### DELETE ENDPOINT
 @app.route('/favorite/planet/<int:planet_id>', methods=['DELETE'])
+@jwt_required()
 def delete_favorite_planet(planet_id):
-    user_id = 2
+    user_id = get_jwt_identity()
     favorito = db.session.scalars(select(Favoritos).where(Favoritos.usuario_id == user_id, Favoritos.planeta_id == planet_id)).first()
     if not favorito:
         return jsonify({"msg": "Favorite planet not found"}), 404
@@ -188,8 +207,9 @@ def delete_favorite_planet(planet_id):
     return jsonify({"msg": "Favorite planet deleted"}), 200
 
 @app.route('/favorite/people/<int:people_id>', methods=['DELETE'])
+@jwt_required()
 def delete_favorite_people(people_id):
-    user_id = 2
+    user_id = get_jwt_identity()
     favorito = db.session.scalars(select(Favoritos).where(Favoritos.usuario_id == user_id, Favoritos.personaje_id == people_id)).first()
     if not favorito:
         return jsonify({"msg": "Favorite people not found"}), 404

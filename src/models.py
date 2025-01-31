@@ -16,7 +16,7 @@ class User(db.Model):
     __tablename__ = "user"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(250), nullable=False)
+    name = Column(String(250))
     email = Column(String(50), nullable=False)
     password = Column(String(50), nullable=False)
     favoritos = relationship("Favoritos", back_populates="user")
